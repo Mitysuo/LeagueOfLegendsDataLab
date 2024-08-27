@@ -127,7 +127,7 @@ class LeagueOfLegends:
         gameEndTimestamp = info['gameEndTimestamp']
         gameVersion = info['gameVersion']
 
-        if gameVersion[0:5] != '14.16' or info['endOfGameResult'] != 'GameComplete':
+        if gameVersion[0:5] != '14.16':
             return False
 
         match_data = {
@@ -137,7 +137,9 @@ class LeagueOfLegends:
             "gameStartTimestamp" : gameStartTimestamp,
             "gameEndTimestamp" : gameEndTimestamp,
             "timePlayed" : (gameEndTimestamp-gameStartTimestamp)/1000,
-            "gameVersion" : gameVersion
+            "gameVersion" : gameVersion,
+            "gameEndedInSurrender" : info["participants"][0]["gameEndedInSurrender"],
+            "gameEndedInEarlySurrender" : info["participants"][0]["gameEndedInEarlySurrender"]
         }
 
         df_match = pd.DataFrame([match_data])
@@ -178,30 +180,31 @@ class LeagueOfLegends:
         for index, participant in enumerate(participants):
             player = info['participants'][index]
             perks = player['perks']
+            challenges = player['challenges']
 
             player_data = {
-                # Initial information
+                # Player information
                 "puuid" : participant,
                 "matchId": matchId,
                 "teamId": teamId,
-                "champion" : player['championName'],
+                "participantId": player['participantId'],
+                "summonnerId" : player["summonerId"],
+                "summonerLevel" : player["summonerLevel"],
+                "individualPosition": player['individualPosition'],
+                "lane" : player['lane'],
+                "role" : player['role'],
+                "teamPosition" : player["teamPosition"],
                 "kills" : player['kills'],
                 "deaths" : player['deaths'],
                 "assists" : player['assists'],
-                "kda" : player['kda'],
-                
-                # Pings information
+                "kda" : challenges['kda'],
 
-                # Itens information
-                "item0" : player['item0'],
-                "item1" : player['item1'],
-                "item2" : player['item2'],
-                "item3" : player['item3'],
-                "item4" : player['item4'],
-                "item5" : player['item5'],
-                "item6" : player['item6'],
-
-                # Game Stats information
+                # Champion information
+                "champion" : player['championName'],
+                "championId" : player['championId'],
+                "championLevel" : player['championLevel'],
+                "championTransform" : player['championTransform'],
+                "championExperience" : player["championExperience"],
 
                 # Perks information
                 "perkKeystone" : perks['styles'][0]['selections'][0]['perk'],
@@ -214,58 +217,92 @@ class LeagueOfLegends:
                 "perkSecondaryStyle" : perks['styles'][1]['style'],
                 "perkShardDefense" : perks['statPerks']['defense'],
                 "perkShardFlex" : perks['statPerks']['flex'],
-                "perkShardOffense" : perks['statPerks']['offense']
+                "perkShardOffense" : perks['statPerks']['offense'],
+
+                # Itens information
+                "item0" : player['item0'],
+                "item1" : player['item1'],
+                "item2" : player['item2'],
+                "item3" : player['item3'],
+                "item4" : player['item4'],
+                "item5" : player['item5'],
+                "item6" : player['item6'],
+                "itemsPurchased" : player['itemsPurchased'],
+                "consumablesPurchased" : player['consumablesPurchased'],
+                "goldEarned" : player['goldEarned'],
+                "goldSpent" : player['goldSpent'],
+
+                # Pings information
+                "allInPings" : player['allInPings'],
+                "assistMePings" : player['AssistMePings'],
+                "basicPings" : player['basicPings'],
+                "commandPings" : player['commandPings'],
+                "dangerPings" : player['dangerPings'],
+                "enemyMissingPings" : player['enemyMissingPings'],
+                "enemyVisionPings" : player['enemyVisionPings'],
+                "getBackPings" : player["getBackPings"],
+                "needVisionPings" : player["needVisionPings"],
+                "onMyWayPings" : player["onMyWayPings"],
+                "pushPings" : player["pushPings"],
+                "visionClearedPings" : player["visionClearedPings"],
+
+                # Player performance information
+                "damageDealtToBuildings" : player["damageDealtToBuildings"],
+                "damageDealtToObjectives" : player["damageDealtToObjectives"],
+                "damageDealtToTurrets" : player["damageDealtToTurrets"],
+                "damageSelfMitigated" : player["damageSelfMitigated"],
+                "magicDamageDealt" : player["magicDamageDealt"],
+                "magicDamageDealtToChampions" : player["magicDamageDealToChampions"],
+                "magicDamageTaken" : player["magicDamageTaken"],
+                "physicalDamageDealt" : player["physicalDamageDealt"],
+                "physicalDamageDealtToChampions" : player["physicalDamageDealtToChampions"],
+                "physicalDamageTaken" : player["physicalDamageTaken"],
+                "totalDamageDealt" : player["totalDamageDeal"],
+                "totalDamageDealtToChampions" : player["totalDamageDealtToChampions"],
+                "totalDamageTaken" : player["totalDamageTaken"],
+                "totalDamageShieldedOnTeammates" : player["totalDamageShieldedOnTeammates"],
+                "totalHeal" : player["totalHeal"],
+                "totalHealsOnTeammates" : player["totalHealsOnTeammates"],
+                "totalUnitsHealed" : player["totalUnitsHealed"],
+                "totalTimeCCDealt" : player["totalTimeCCDealt"],
+                "totalTimeSpentDead" : player["totalTimeSpentDead"],
+                "trueDamageDealt" : player["trueDamageDealt"],
+                "trueDamageDealtToChampions" : player["trueDamageDealtToChampions"],
+                "trueDamageTaken" : player["trueDamageTaken"],
+                "firstBlood" : player["firstBlood"],
+                "firstTowerKill" : player["firstTowerKill"],
+                "doublekills" : player["doublekills"],
+                "trippleKills" : player["tripleKills"],
+                "quadraKills" : player["quadraKills"],
+                "pentaKills" : player["pentaKills"],
+
+                # Objectives information
+                "dragonKills" : player["dragonKills"],
+                "inhibitorKills" : player["inhibitorKills"],
+                "nexusKills" : player["nexusKills"],
+                "turretKills" : player["turretKills"],
+                "objectivesStolen" : player["objectivesStolen"],
+                "totalMinionsKilled" : player['totalMinionsKilled'],
+                "totalNeutralMinionsKilled" : player['totalAllyJungleMinionsKilled'] + player['totalEnemyJungleMinionsKilled'],
+
+                # Advanced Statistics information
+                "longestTimeSpentLiving" : player["longestTimeSpentLiving"],
+
+                # Ability information
+                "spell1Casts" : player["spell1Casts"],
+                "spell2Casts" : player["spell2Casts"],
+                "spell3Casts" : player["spell3Casts"],
+                "spell4Casts" : player["spell4Casts"],
+
+                # Vision Information
+                "sightWardsBoughtInGame" : player["sightWardsBoughtInGame"],
+                "detectorWardsPlaced" : player["detectorWardsPlaced"],
+                "visionScore" : player["visionScore"],
+                "visionClearedPings" : player["visionClearedPings"],
+                "visionWardsBoughtInGame" : player["visionWardsBoughtInGame"],
+                "wardsPlaced" : player["wardsPlaced"],
+                "wardsKilled" : player["wardsKilled"]
             }
-
-        matchId = metadata['matchId']
-        gameCreation = info['gameCreation']
-        gameStartTimestamp = info['gameStartTimestamp']
-        gameEndTimestamp = info['gameEndTimestamp']
-        gameMode = info['gameMode']
-        gameVersion = info['gameVersion']
-        platformId = info['platformId']
-        queueId = info['queueId']
-        puuid = player['puuid']
-        riotIdGameName = player['summonerName']
-
-        side = side_dict[player['teamId']]
-        win = player['win']
-
-        summOne = player['summoner1Id']
-        summTwo = player['summoner2Id']
-        earlySurrender = player['gameEndedInEarlySurrender']
-        surrender = player['gameEndedInSurrender']
-        firstBlood = player['firstBloodKill']
-        firstBloodAssist = player['firstBloodAssist']
-        firstTower = player['firstTowerKill']
-        firstTowerAssist = player['firstTowerAssist']
-        dragonKills = player['dragonKills']
-
-        damageDealtToBuildings = player['damageDealtToBuildings']
-        damageDealtToObjectives = player['damageDealtToObjectives']
-        damageSelfMitigated = player['damageSelfMitigated']
-        goldEarned = player['goldEarned']
-        teamPosition = player['teamPosition']
-        lane = player['lane']
-        largestKillingSpree = player['largestKillingSpree']
-        longestTimeSpentLiving = player['longestTimeSpentLiving']
-        objectivesStolen = player['objectivesStolen']
-        totalMinionsKilled = player['totalMinionsKilled']
-        totalAllyJungleMinionsKilled = player['totalAllyJungleMinionsKilled']
-        totalEnemyJungleMinionsKilled = player['totalEnemyJungleMinionsKilled']
-        totalNeutralMinionsKilled = totalAllyJungleMinionsKilled + totalEnemyJungleMinionsKilled
-        totalDamageDealtToChampions = player['totalDamageDealtToChampions']
-        totalDamageShieldedOnTeammates = player['totalDamageShieldedOnTeammates']
-        totalHealsOnTeammates = player['totalHealsOnTeammates']
-        totalDamageTaken = player['totalDamageTaken']
-        totalTimeCCDealt = player['totalTimeCCDealt']
-        totalTimeSpentDead = player['totalTimeSpentDead']
-        turretKills = player['turretKills']
-        turretsLost = player['turretsLost']
-        visionScore = player['visionScore']
-        controlWardsPlaced = player['detectorWardsPlaced']
-        wardsKilled = player['wardsKilled']
-        wardsPlaced = player['wardsPlaced']
 
 if __name__ == "__main__":
     lol_data = LeagueOfLegends()
