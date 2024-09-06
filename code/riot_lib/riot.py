@@ -4,7 +4,7 @@ from riotwatcher import LolWatcher, ApiError
 import pandas as pd
 import json
 
-sys.path.append(os.path.abspath(os.path.join(os.getcwd(), '..')))
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from settings import API_KEY
 
 class LeagueOfLegends:
@@ -96,6 +96,7 @@ class LeagueOfLegends:
         Returns:
             List[strings]: Lista do histórico de partidas para um determinado PUUID.
         """
+
         if not puuid:
             print("PUUID é necessário.")
             return False
@@ -146,17 +147,33 @@ class LeagueOfLegends:
 
         # Team information
         team_list = []
-
         teams = info['teams']
-        teamId = teams[index]["teamId"]
+
+        # Get advanced information
+        for index in range(5):
+            if info['participants'][index]["firstTowerKill"]:
+                firstTower = [True, False]
+            elif index == 4:
+                firstTower = [False, True]
+
+            if info['participants'][index]["firstBloodKill"]:
+                firstKill = [True, False]
+            elif index == 4:
+                firstKill = [False, True]
+
         for index in range(2):
             team_data = {
                 # Initial information
                 "matchId": matchId,
-                "teamId" : teamId,
+                "teamId" : teams[index]["teamId"],
                 "win" : teams[index]["win"],
 
                 # Pick and ban information
+                "championPickTurn1" : info['participants'][0 + index*5]['championId'],
+                "championPickTurn2" : info['participants'][1 + index*5]['championId'],
+                "championPickTurn3" : info['participants'][2 + index*5]['championId'],
+                "championPickTurn4" : info['participants'][3 + index*5]['championId'],
+                "championPickTurn5" : info['participants'][4 + index*5]['championId'],
                 "championBanPickTurn1" : teams[index]["bans"][0]["championId"],
                 "championBanPickTurn2" : teams[index]["bans"][1]["championId"],
                 "championBanPickTurn3" : teams[index]["bans"][2]["championId"],
@@ -169,7 +186,11 @@ class LeagueOfLegends:
                 "championKills" : teams[index]["objectives"]["champion"]["kills"],
                 "inhibitorKills" : teams[index]["objectives"]["inhibitor"]["kills"],
                 "riftHeraldKills" : teams[index]["objectives"]["riftHerald"]["kills"],
-                "towerKills" : teams[index]["objectives"]["tower"]["kills"]
+                "towerKills" : teams[index]["objectives"]["tower"]["kills"],
+
+                # Advanced information
+                "firstTower" : firstTower[index],
+                "firstKill" : firstKill[index]
             }
 
             team_list.append(team_data)
@@ -177,10 +198,17 @@ class LeagueOfLegends:
         df_team = pd.DataFrame(team_list)
             
         # Player information
+        player_list = []
+
         for index, participant in enumerate(participants):
             player = info['participants'][index]
             perks = player['perks']
             challenges = player['challenges']
+
+            if index < 5:
+                teamId = teams[0]["teamId"]
+            else:
+                teamId = teams[1]["teamId"]
 
             player_data = {
                 # Player information
@@ -191,8 +219,6 @@ class LeagueOfLegends:
                 "summonnerId" : player["summonerId"],
                 "summonerLevel" : player["summonerLevel"],
                 "individualPosition": player['individualPosition'],
-                "lane" : player['lane'],
-                "role" : player['role'],
                 "teamPosition" : player["teamPosition"],
                 "kills" : player['kills'],
                 "deaths" : player['deaths'],
@@ -202,9 +228,8 @@ class LeagueOfLegends:
                 # Champion information
                 "champion" : player['championName'],
                 "championId" : player['championId'],
-                "championLevel" : player['championLevel'],
-                "championTransform" : player['championTransform'],
-                "championExperience" : player["championExperience"],
+                "champLevel" : player['champLevel'],
+                "champExperience" : player["champExperience"],
 
                 # Perks information
                 "perkKeystone" : perks['styles'][0]['selections'][0]['perk'],
@@ -234,7 +259,7 @@ class LeagueOfLegends:
 
                 # Pings information
                 "allInPings" : player['allInPings'],
-                "assistMePings" : player['AssistMePings'],
+                "assistMePings" : player['assistMePings'],
                 "basicPings" : player['basicPings'],
                 "commandPings" : player['commandPings'],
                 "dangerPings" : player['dangerPings'],
@@ -252,41 +277,34 @@ class LeagueOfLegends:
                 "damageDealtToTurrets" : player["damageDealtToTurrets"],
                 "damageSelfMitigated" : player["damageSelfMitigated"],
                 "magicDamageDealt" : player["magicDamageDealt"],
-                "magicDamageDealtToChampions" : player["magicDamageDealToChampions"],
+                "magicDamageDealtToChampions" : player["magicDamageDealtToChampions"],
                 "magicDamageTaken" : player["magicDamageTaken"],
                 "physicalDamageDealt" : player["physicalDamageDealt"],
                 "physicalDamageDealtToChampions" : player["physicalDamageDealtToChampions"],
                 "physicalDamageTaken" : player["physicalDamageTaken"],
-                "totalDamageDealt" : player["totalDamageDeal"],
+                "totalDamageDealt" : player["totalDamageDealt"],
                 "totalDamageDealtToChampions" : player["totalDamageDealtToChampions"],
                 "totalDamageTaken" : player["totalDamageTaken"],
                 "totalDamageShieldedOnTeammates" : player["totalDamageShieldedOnTeammates"],
                 "totalHeal" : player["totalHeal"],
                 "totalHealsOnTeammates" : player["totalHealsOnTeammates"],
                 "totalUnitsHealed" : player["totalUnitsHealed"],
+                "timeCCingOthers" : player["timeCCingOthers"],
                 "totalTimeCCDealt" : player["totalTimeCCDealt"],
                 "totalTimeSpentDead" : player["totalTimeSpentDead"],
                 "trueDamageDealt" : player["trueDamageDealt"],
                 "trueDamageDealtToChampions" : player["trueDamageDealtToChampions"],
                 "trueDamageTaken" : player["trueDamageTaken"],
-                "firstBlood" : player["firstBlood"],
+                "firstBloodKill" : player["firstBloodKill"],
                 "firstTowerKill" : player["firstTowerKill"],
-                "doublekills" : player["doublekills"],
-                "trippleKills" : player["tripleKills"],
+                "doubleKills" : player["doubleKills"],
+                "tripleKills" : player["tripleKills"],
                 "quadraKills" : player["quadraKills"],
                 "pentaKills" : player["pentaKills"],
 
                 # Objectives information
-                "dragonKills" : player["dragonKills"],
-                "inhibitorKills" : player["inhibitorKills"],
-                "nexusKills" : player["nexusKills"],
-                "turretKills" : player["turretKills"],
-                "objectivesStolen" : player["objectivesStolen"],
                 "totalMinionsKilled" : player['totalMinionsKilled'],
                 "totalNeutralMinionsKilled" : player['totalAllyJungleMinionsKilled'] + player['totalEnemyJungleMinionsKilled'],
-
-                # Advanced Statistics information
-                "longestTimeSpentLiving" : player["longestTimeSpentLiving"],
 
                 # Ability information
                 "spell1Casts" : player["spell1Casts"],
@@ -301,10 +319,43 @@ class LeagueOfLegends:
                 "visionClearedPings" : player["visionClearedPings"],
                 "visionWardsBoughtInGame" : player["visionWardsBoughtInGame"],
                 "wardsPlaced" : player["wardsPlaced"],
-                "wardsKilled" : player["wardsKilled"]
+                "wardsKilled" : player["wardsKilled"],
+
+                # Advanced Statistics information
+                "damagePerMinute" : challenges["damagePerMinute"],
+                "damageTakenOnTeamPercentage" : challenges["damageTakenOnTeamPercentage"],
+                "goldPerMinute" : challenges["goldPerMinute"],
+                "visionScorePerMinute" : challenges["visionScorePerMinute"],
+                "longestTimeSpentLiving" : player["longestTimeSpentLiving"]
             }
 
+            player_list.append(player_data)
+
+        df_player = pd.DataFrame(player_list)
+
+        return df_match, df_team, df_player
+    
+    def get_mastery_champion(self, puuid):
+        try:
+            mastery = self.watcher.champion_mastery.by_puuid(self.region, puuid)
+
+            return mastery
+        
+        except ApiError as err:
+            if err.response.status_code == 429:
+                print("Limite de requisições atingido. Tente novamente mais tarde.")
+            elif err.response.status_code == 404:
+                print(f"SummonerId não encontrado.")
+            else:
+                print(f"Ocorreu um erro: {err}")
+    
 if __name__ == "__main__":
+    os.chdir(os.path.dirname(os.path.abspath(__file__)))
     lol_data = LeagueOfLegends()
-    df = lol_data.get_league(2000)
-    print(df)
+    # df = lol_data.get_league(2000)
+    # print(df)
+
+    mastery = lol_data.get_mastery_champion('_1jFGvcCNhrsG8tn9rK3faM5W4wHtGJY_AMjT8uXarv6XoNFfg8FgrzAC8E1glBLBZNF_PFditkaGg')
+
+    print(mastery)
+

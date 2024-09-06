@@ -11,7 +11,7 @@ if __name__ == "__main__":
     # # Get the players information
     # df = lol.get_league(2000)
 
-    # sql = SQLClient(use_sqlalchemy=False)
+    sql = SQLClient(use_sqlalchemy=False)
     # sql.insert_dataframe(df, 'Players')
 
     # Get the match information
@@ -21,7 +21,8 @@ if __name__ == "__main__":
     
     for puuid in puuid_list[:1]:
         match_list = lol.get_matchlist(puuid)
-
         for match in match_list[:1]:
-            match_data = lol.get_match(match)
-            print(match_data)
+            df_match, df_team, df_playermatches = lol.get_match(match)
+            sql.insert_dataframe(df_match, 'Matches')
+            sql.insert_dataframe(df_team, 'Teams')
+            sql.insert_dataframe(df_playermatches, 'PlayerMatches')
