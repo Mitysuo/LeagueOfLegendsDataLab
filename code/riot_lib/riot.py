@@ -337,9 +337,22 @@ class LeagueOfLegends:
     
     def get_mastery_champion(self, puuid):
         try:
-            mastery = self.watcher.champion_mastery.by_puuid(self.region, puuid)
+            mastery_champions = self.watcher.champion_mastery.by_puuid(self.region, puuid)
 
-            return mastery
+            mastery_list = []
+            for champion in mastery_champions:
+                mastery_data = {
+                    "puuid" : champion["puuid"],
+                    "championId" : champion["championId"],
+                    "championLevel" : champion["championLevel"],
+                    "championPoints" : champion["championPoints"],
+                    "lastPlayTime" : champion["lastPlayTime"],
+                    "milestoneGrades" : json.dumps(champion.get("milestoneGrades", []))
+                }
+
+                mastery_list.append(mastery_data)
+            df_mastery_champion = pd.DataFrame(mastery_list)
+            return df_mastery_champion
         
         except ApiError as err:
             if err.response.status_code == 429:
@@ -355,7 +368,7 @@ if __name__ == "__main__":
     # df = lol_data.get_league(2000)
     # print(df)
 
-    mastery = lol_data.get_mastery_champion('_1jFGvcCNhrsG8tn9rK3faM5W4wHtGJY_AMjT8uXarv6XoNFfg8FgrzAC8E1glBLBZNF_PFditkaGg')
+    df_mastery = lol_data.get_mastery_champion('_1jFGvcCNhrsG8tn9rK3faM5W4wHtGJY_AMjT8uXarv6XoNFfg8FgrzAC8E1glBLBZNF_PFditkaGg')
 
-    print(mastery)
+    df_mastery.info()
 
