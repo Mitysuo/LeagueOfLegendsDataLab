@@ -40,16 +40,17 @@ class LolTheoryScraper:
         self.__close_browser()
 
         return {
-            "Risk Value:": risk_value.strip(),
+            "Risk Value:": float(risk_value.strip()),
             "Win Rate:": win_rate_value.strip()
         }
 
 # Uso da classe:
 if __name__ == "__main__":
     # Lista de campeões para serem selecionados
-    champions_to_select = ["Aatrox", "Amumu", "Annie", "Ashe", "Blitzcrank", "Caitlyn", "Darius", "Draven", "Ekko", "Alistar"]
+    champions_to_select = ["Aatrox", "Amumu", "Elise", "Ashe", "Blitzcrank", "Caitlyn", "Darius", "Draven", "Ekko", "Alistar"]
     
     scraper = LolTheoryScraper()
-    stats = scraper.get_stats(champions_to_select)
+    risk_value, win_rate = scraper.get_stats(champions_to_select).values()
 
-    print(stats)
+    print(f'Risk Value: {risk_value}')
+    print(f'Win Rate: {win_rate}')

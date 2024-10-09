@@ -5,6 +5,9 @@ import pandas as pd
 import json
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from sql_lib.sql import SQLClient
+from extract_lib.comp_analyzer import LolTheoryScraper
+from extract_lib.stats import StatsFetcher
 from settings import API_KEY
 
 class LeagueOfLegends:
@@ -121,31 +124,9 @@ class LeagueOfLegends:
         metadata = match_json['metadata']
         info = match_json['info']
         participants = metadata["participants"]
-
-        # Match information
         matchId = metadata["matchId"]
-        gameStartTimestamp = info['gameStartTimestamp']
-        gameEndTimestamp = info['gameEndTimestamp']
-        gameVersion = info['gameVersion']
 
-        if gameVersion[0:5] != '14.16':
-            return False
-
-        match_data = {
-            "matchId" : matchId,
-            "participants" : json.dumps(participants),
-            "endOfGameResult" : info['endOfGameResult'],
-            "gameStartTimestamp" : gameStartTimestamp,
-            "gameEndTimestamp" : gameEndTimestamp,
-            "timePlayed" : (gameEndTimestamp-gameStartTimestamp)/1000,
-            "gameVersion" : gameVersion,
-            "gameEndedInSurrender" : info["participants"][0]["gameEndedInSurrender"],
-            "gameEndedInEarlySurrender" : info["participants"][0]["gameEndedInEarlySurrender"]
-        }
-
-        df_match = pd.DataFrame([match_data])
-
-        # Team information
+        ### Team information
         team_list = []
         teams = info['teams']
 
@@ -161,7 +142,12 @@ class LeagueOfLegends:
             elif index == 4:
                 firstKill = [False, True]
 
+        picks = []
         for index in range(2):
+            # Champions Picks
+            championPickTurn = [info['participants'][r + index*5]['championId'] for r in range(5)]
+            picks.append(championPickTurn)
+
             team_data = {
                 # Initial information
                 "matchId": matchId,
@@ -169,11 +155,11 @@ class LeagueOfLegends:
                 "win" : teams[index]["win"],
 
                 # Pick and ban information
-                "championPickTurn1" : info['participants'][0 + index*5]['championId'],
-                "championPickTurn2" : info['participants'][1 + index*5]['championId'],
-                "championPickTurn3" : info['participants'][2 + index*5]['championId'],
-                "championPickTurn4" : info['participants'][3 + index*5]['championId'],
-                "championPickTurn5" : info['participants'][4 + index*5]['championId'],
+                "championPickTurn1" : championPickTurn[0],
+                "championPickTurn2" : championPickTurn[1],
+                "championPickTurn3" : championPickTurn[2],
+                "championPickTurn4" : championPickTurn[3],
+                "championPickTurn5" : championPickTurn[4],
                 "championBanPickTurn1" : teams[index]["bans"][0]["championId"],
                 "championBanPickTurn2" : teams[index]["bans"][1]["championId"],
                 "championBanPickTurn3" : teams[index]["bans"][2]["championId"],
@@ -196,14 +182,55 @@ class LeagueOfLegends:
             team_list.append(team_data)
 
         df_team = pd.DataFrame(team_list)
+
+        ### Match information
+        gameStartTimestamp = info['gameStartTimestamp']
+        gameEndTimestamp = info['gameEndTimestamp']
+
+        # Composition information
+        comp = LolTheoryScraper()
+        risk_value, win_rate = comp.get_stats(sum(championPickTurn, [])).values()
+
+        match_data = {
+            "matchId" : matchId,
+            "participants" : json.dumps(participants),
+            "endOfGameResult" : info['endOfGameResult'],
+            "timePlayed" : (gameEndTimestamp-gameStartTimestamp)/1000,
+            "gameVersion" : info['gameVersion'],
+            "gameEndedInSurrender" : info["participants"][0]["gameEndedInSurrender"],
+            "gameEndedInEarlySurrender" : info["participants"][0]["gameEndedInEarlySurrender"],
+
+            # Advanced information
+            "compPontuation" : risk_value,
+            "compWinRate" : win_rate
+        }
+
+        df_match = pd.DataFrame([match_data])
             
-        # Player information
+        ### Player information
         player_list = []
+        championId = player['championId']
+
+        # Runes
+        primaryRune = [perks['styles'][0]['selections'][i]['perk'] for i in range(4)]
+        secudaryRune = [perks['styles'][1]['selections'][i]['perk'] for i in range(2)]
+
+        stats = StatsFetcher(championId)
+        averageRuneWinRate = sum([stats.get_rune_stats(r)['winRate'] for r in primaryRune] +
+                                 [stats.get_secundary_rune_stats(r)['winRate'] for r in secudaryRune]) / (len(primaryRune) + len(secudaryRune))
+
+        averageRunePickRate = sum([stats.get_rune_stats(r)['pickRate'] for r in primaryRune] +
+                                  [stats.get_secundary_rune_stats(r)['pickRate'] for r in secudaryRune]) / (len(primaryRune) + len(secudaryRune))
 
         for index, participant in enumerate(participants):
             player = info['participants'][index]
             perks = player['perks']
             challenges = player['challenges']
+            summonerId = player["summonerId"]
+
+            # Extra Information
+            rank = self.get_player_rank(summonerId)
+            tierRank = rank['tier'] + ' ' + rank['rank'] if rank is not None else "Missing"
 
             if index < 5:
                 teamId = teams[0]["teamId"]
@@ -216,7 +243,7 @@ class LeagueOfLegends:
                 "matchId": matchId,
                 "teamId": teamId,
                 "participantId": player['participantId'],
-                "summonnerId" : player["summonerId"],
+                "summonnerId" : summonerId,
                 "summonerLevel" : player["summonerLevel"],
                 "individualPosition": player['individualPosition'],
                 "teamPosition" : player["teamPosition"],
@@ -224,21 +251,23 @@ class LeagueOfLegends:
                 "deaths" : player['deaths'],
                 "assists" : player['assists'],
                 "kda" : challenges['kda'],
+                "win" : player['win'],
+                "tierRank" : tierRank,
 
                 # Champion information
                 "champion" : player['championName'],
-                "championId" : player['championId'],
+                "championId" : championId,
                 "champLevel" : player['champLevel'],
                 "champExperience" : player["champExperience"],
 
                 # Perks information
-                "perkKeystone" : perks['styles'][0]['selections'][0]['perk'],
-                "perkPrimaryRow1" : perks['styles'][0]['selections'][1]['perk'],
-                "perkPrimaryRow2" : perks['styles'][0]['selections'][2]['perk'],
-                "perkPrimaryRow3" : perks['styles'][0]['selections'][3]['perk'],
+                "perkKeystone" : primaryRune[0],
+                "perkPrimaryRow1" : primaryRune[1],
+                "perkPrimaryRow2" : primaryRune[2],
+                "perkPrimaryRow3" : primaryRune[3],
                 "perkPrimaryStyle" : perks['styles'][0]['style'],
-                "perkSecondaryRow1" : perks['styles'][1]['selections'][0]['perk'],
-                "perkSecondaryRow2" : perks['styles'][1]['selections'][1]['perk'],
+                "perkSecondaryRow1" : secudaryRune[0],
+                "perkSecondaryRow2" : secudaryRune[1],
                 "perkSecondaryStyle" : perks['styles'][1]['style'],
                 "perkShardDefense" : perks['statPerks']['defense'],
                 "perkShardFlex" : perks['statPerks']['flex'],
@@ -326,7 +355,12 @@ class LeagueOfLegends:
                 "damageTakenOnTeamPercentage" : challenges["damageTakenOnTeamPercentage"],
                 "goldPerMinute" : challenges["goldPerMinute"],
                 "visionScorePerMinute" : challenges["visionScorePerMinute"],
-                "longestTimeSpentLiving" : player["longestTimeSpentLiving"]
+                "longestTimeSpentLiving" : player["longestTimeSpentLiving"],
+                "runesWinRate" : averageRuneWinRate,
+                'runesPickRate': averageRunePickRate,
+
+                # Extra information
+                "gameStartTimestamp" : gameStartTimestamp
             }
 
             player_list.append(player_data)
@@ -336,18 +370,42 @@ class LeagueOfLegends:
         return df_match, df_team, df_player
     
     def get_mastery_champion(self, puuid):
+        # # Consultar SQL se existe a maestria do campeão para um certo puuid
+        # sql_alchemy = SQLClient()
+        # sql_alchemy.get_data('ChampionMastery', 'championPoints, averageGrade')
+        
         try:
             mastery_champions = self.watcher.champion_mastery.by_puuid(self.region, puuid)
+            
+            grade_mapping = {
+                "S+": 12, "S": 11, "S-": 10,
+                "A+": 9, "A": 8, "A-": 7,
+                "B+": 6, "B": 5, "B-": 4,
+                "C+": 3, "C": 2, "C-": 1,
+                "D": 0
+            }   
 
             mastery_list = []
             for champion in mastery_champions:
+                
+                reverse_mapping = {v: k for k, v in grade_mapping.items()}
+                grades = champion.get("milestoneGrades", "Missing")
+                
+                if grades != "Missing":
+                    numeric_grades = [grade_mapping.get(grade) for grade in grades if grade in grade_mapping]
+                    if not numeric_grades:
+                        grades = "Missing"
+                    else:
+                        num_average = sum(numeric_grades) / len(numeric_grades)
+                        grades = reverse_mapping[round(num_average)]
+                
                 mastery_data = {
                     "puuid" : champion["puuid"],
                     "championId" : champion["championId"],
                     "championLevel" : champion["championLevel"],
                     "championPoints" : champion["championPoints"],
                     "lastPlayTime" : champion["lastPlayTime"],
-                    "milestoneGrades" : json.dumps(champion.get("milestoneGrades", []))
+                    "averageGrade" : grades
                 }
 
                 mastery_list.append(mastery_data)
@@ -362,13 +420,59 @@ class LeagueOfLegends:
             else:
                 print(f"Ocorreu um erro: {err}")
     
+    def get_player_rank(self, summonerId):
+        try:
+            all_rank = self.watcher.league.by_summoner(self.region, summonerId)
+
+            if len(all_rank) == 0:
+                return None
+            
+            player_rank = None
+
+            for index, rank in enumerate(all_rank):
+                index += 1
+                if rank['queueType'] == 'RANKED_SOLO_5x5':
+                    player_rank = rank
+                    break
+
+                if index == len(all_rank):
+                    return None
+
+            rank_dict = {
+                'leagueId' : player_rank['leagueId'],
+                'queueType' : player_rank['queueType'],
+                'tier' : player_rank['tier'],
+                'rank' : player_rank['rank'],
+                'leaguePoints' : player_rank['leaguePoints'],
+                'wins' : player_rank['wins'],
+                'losses' : player_rank['losses'],
+                'veteran' : player_rank['veteran'],
+                'inactive' : player_rank['inactive'],
+                'freshBlood' : player_rank['freshBlood'],
+                'hotStreak' : player_rank['hotStreak']
+            }
+
+            df_rank = pd.DataFrame([rank_dict])
+            
+            return df_rank
+        except ApiError as err:
+            if err.response.status_code == 429:
+                print("Limite de requisições atingido. Tente novamente mais tarde.")
+            elif err.response.status_code == 404:
+                print(f"SummonerId não encontrado.")
+            else:
+                print(f"Ocorreu um erro: {err}")
+    
 if __name__ == "__main__":
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
     lol_data = LeagueOfLegends()
     # df = lol_data.get_league(2000)
     # print(df)
 
-    df_mastery = lol_data.get_mastery_champion('_1jFGvcCNhrsG8tn9rK3faM5W4wHtGJY_AMjT8uXarv6XoNFfg8FgrzAC8E1glBLBZNF_PFditkaGg')
+    # df_mastery = lol_data.get_mastery_champion('45vQt28hMXEfGOBx3eqywuUXTBb1UzFMbqsEmpkaUn_I93kcU9KAple9kGlC3Fni7RO0RG_NBRiq5Q')
+    # print(df_mastery['averageGrade'])
+    # print(df_mastery.info())
 
-    df_mastery.info()
+    df_rank = lol_data.get_player_rank("gsWcPbFY8bcnEOcxjJL4wwkQV2n_HbdJQMRYTHYvvP_hdKo")
+    print(df_rank)
 
