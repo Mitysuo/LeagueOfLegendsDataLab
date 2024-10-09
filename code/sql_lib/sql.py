@@ -7,10 +7,10 @@ from sqlalchemy import create_engine, text
 from sqlalchemy.engine.url import URL
 import pyodbc
 
-from settings import queries_path
+from settings import queries_path, DRIVER, SERVER, DATABASE, USER_SQL, PASSWORD_SQL, TRUSTED_CONNECTION
 
 class SQLClient:
-    def __init__(self, use_sqlalchemy=True, driver='SQL Server', server='LAPTOP-UQSSFDU1\SQLEXPRESS01', database='LOL_Analytics'):
+    def __init__(self, use_sqlalchemy=True, driver=DRIVER, server=SERVER, database=DATABASE):
         self.use_sqlalchemy = use_sqlalchemy
         self.driver = driver
         self.server = server
@@ -21,6 +21,10 @@ class SQLClient:
         """
         Cria uma conexão com o banco de dados SQL Server usando autenticação do Windows.
         """
+
+        connection_string = (f"DRIVER={self.driver};SERVER={self.server};DATABASE={self.database};"
+                             f"UID={USER_SQL};PWD={PASSWORD_SQL}")
+        
         connection_string = (f"DRIVER={self.driver};SERVER={self.server};DATABASE={self.database};"
                              f"Trusted_Connection=yes;")
 

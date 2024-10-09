@@ -9,3 +9,9 @@ docs_path = os.getenv("DOCS_PATH")
 
 # Variables
 API_KEY = os.getenv("API_KEY")
+TRUSTED_CONNECTION = os.getenv("TRUSTED_CONNECTION")
+USER_SQL = os.getenv("USER_SQL")
+PASSWORD_SQL = os.getenv("PASSWORD_SQL")
+DRIVER = os.getenv("DRIVER")
+SERVER = os.getenv("SERVER")
+DATABASE = os.getenv("DATABASE")
