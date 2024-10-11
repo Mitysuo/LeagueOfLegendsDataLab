@@ -3,8 +3,16 @@ import pandas as pd
 from statistics import mean, mode
 from collections import deque
 
-from riot_lib.riot import LeagueOfLegends
-from sql_lib.sql import SQLClient
+from libs.riot_lib.riot import LeagueOfLegends
+from libs.sql_lib.sql import SQLClient
+
+### Tarefas - Importante
+# Fazer slides
+# Definir quais informações serão guardadas em uma tabela (acredito que não é necessário estocar tudo, 
+    # porém se quiser/achar necessário verificar a melhor maneira)
+# Importar tqdm
+# Finalizar código da obtenção das informações e envio
+# Verificar melhorias no código
 
 ### Important informations
 
