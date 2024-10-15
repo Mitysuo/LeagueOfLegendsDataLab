@@ -6,6 +6,7 @@ load_dotenv()
 # Paths
 queries_path = os.getenv("QUERY_PATH")
 docs_path = os.getenv("DOCS_PATH")
+logs_path = os.getenv("LOGS_PATH")
 
 # Variables
 API_KEY = os.getenv("API_KEY")

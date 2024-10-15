@@ -6,8 +6,6 @@ import json
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from sql_lib.sql import SQLClient
-from extract_lib.comp_analyzer import LolTheoryScraper
-from extract_lib.stats import StatsFetcher
 from settings import API_KEY
 
 class LeagueOfLegends:
@@ -187,10 +185,6 @@ class LeagueOfLegends:
         gameStartTimestamp = info['gameStartTimestamp']
         gameEndTimestamp = info['gameEndTimestamp']
 
-        # Composition information
-        comp = LolTheoryScraper()
-        risk_value, win_rate = comp.get_stats(sum(championPickTurn, [])).values()
-
         match_data = {
             "matchId" : matchId,
             "participants" : json.dumps(participants),
@@ -199,10 +193,7 @@ class LeagueOfLegends:
             "gameVersion" : info['gameVersion'],
             "gameEndedInSurrender" : info["participants"][0]["gameEndedInSurrender"],
             "gameEndedInEarlySurrender" : info["participants"][0]["gameEndedInEarlySurrender"],
-
-            # Advanced information
-            "compPontuation" : risk_value,
-            "compWinRate" : win_rate
+            "gameStartTimestamp" : gameStartTimestamp/1000
         }
 
         df_match = pd.DataFrame([match_data])
@@ -214,13 +205,6 @@ class LeagueOfLegends:
         # Runes
         primaryRune = [perks['styles'][0]['selections'][i]['perk'] for i in range(4)]
         secudaryRune = [perks['styles'][1]['selections'][i]['perk'] for i in range(2)]
-
-        stats = StatsFetcher(championId)
-        averageRuneWinRate = sum([stats.get_rune_stats(r)['winRate'] for r in primaryRune] +
-                                 [stats.get_secundary_rune_stats(r)['winRate'] for r in secudaryRune]) / (len(primaryRune) + len(secudaryRune))
-
-        averageRunePickRate = sum([stats.get_rune_stats(r)['pickRate'] for r in primaryRune] +
-                                  [stats.get_secundary_rune_stats(r)['pickRate'] for r in secudaryRune]) / (len(primaryRune) + len(secudaryRune))
 
         for index, participant in enumerate(participants):
             player = info['participants'][index]
@@ -324,8 +308,6 @@ class LeagueOfLegends:
                 "trueDamageDealt" : player["trueDamageDealt"],
                 "trueDamageDealtToChampions" : player["trueDamageDealtToChampions"],
                 "trueDamageTaken" : player["trueDamageTaken"],
-                "firstBloodKill" : player["firstBloodKill"],
-                "firstTowerKill" : player["firstTowerKill"],
                 "doubleKills" : player["doubleKills"],
                 "tripleKills" : player["tripleKills"],
                 "quadraKills" : player["quadraKills"],
@@ -355,12 +337,7 @@ class LeagueOfLegends:
                 "damageTakenOnTeamPercentage" : challenges["damageTakenOnTeamPercentage"],
                 "goldPerMinute" : challenges["goldPerMinute"],
                 "visionScorePerMinute" : challenges["visionScorePerMinute"],
-                "longestTimeSpentLiving" : player["longestTimeSpentLiving"],
-                "runesWinRate" : averageRuneWinRate,
-                'runesPickRate': averageRunePickRate,
-
-                # Extra information
-                "gameStartTimestamp" : gameStartTimestamp
+                "longestTimeSpentLiving" : player["longestTimeSpentLiving"]
             }
 
             player_list.append(player_data)
