@@ -1,12 +1,14 @@
 import os
 import sys
 from riotwatcher import LolWatcher, ApiError
+import requests
 import pandas as pd
 import json
 
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+sys.path.append(os.path.abspath(os.path.join(__file__, "../..")))
 from sql_lib.sql import SQLClient
-from settings import API_KEY
+sys.path.append(os.path.abspath(os.path.join(__file__, "../../..")))
+from settings import docs_path, API_KEY
 
 class LeagueOfLegends:
 
@@ -439,7 +441,53 @@ class LeagueOfLegends:
                 print(f"SummonerId não encontrado.")
             else:
                 print(f"Ocorreu um erro: {err}")
-    
+        
+    def get_data_dragon_json(self, version='latest', data_type='champion'):
+        """
+        Obtém os arquivos JSON do Data Dragon da Riot Games usando o RiotWatcher e os salva na pasta especificada em docs_path.
+        
+        :param version: Versão do Data Dragon a ser baixada (ex.: '13.19.1'). Use 'latest' para a versão mais recente.
+        :param data_type: Tipo de dados a serem baixados (ex.: 'champion', 'item', 'rune').
+        :return: Caminho completo do arquivo JSON salvo.
+        """
+        # Se a versão for 'latest', busca a versão mais recente diretamente da API do Data Dragon
+        if version == 'latest':
+            versions = self.watcher.data_dragon.versions_all()
+            version = versions[0]
+
+        # Baixa o JSON específico usando o RiotWatcher
+        match data_type:
+            case 'champion':
+                data = self.watcher.data_dragon.champions(version)
+            case 'item':
+                data = self.watcher.data_dragon.items(version)
+            case 'rune_reforged':
+                data = self.watcher.data_dragon.runes_reforged(version)
+            case 'language':
+                data = self.watcher.data_dragon.languages(version)
+            case 'mastery':
+                data = self.watcher.data_dragon.masteries(version)
+            case 'profile_icon':
+                data = self.watcher.data_dragon.profile_icons(version)
+            case 'rune':
+                data = self.watcher.data_dragon.runes(version)
+            case 'summoner_spells':
+                data = self.watcher.data_dragon.summoner_spells(version)
+            case 'map':
+                data = self.watcher.data_dragon.maps(version)
+            case _:
+                raise ValueError(f"Tipo de dado '{data_type}' não suportado.")
+
+        # Cria a pasta se ela não existir
+        os.makedirs(docs_path, exist_ok=True)
+
+        # Caminho completo onde o arquivo será salvo
+        file_path = os.path.join(docs_path, f"{data_type}.json")
+
+        # Salva o JSON no arquivo
+        with open(file_path, 'w', encoding='utf-8') as file:
+            json.dump(data, file, ensure_ascii=False, indent=4)
+        
 if __name__ == "__main__":
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
     lol_data = LeagueOfLegends()
@@ -450,6 +498,9 @@ if __name__ == "__main__":
     # print(df_mastery['averageGrade'])
     # print(df_mastery.info())
 
-    df_rank = lol_data.get_player_rank("gsWcPbFY8bcnEOcxjJL4wwkQV2n_HbdJQMRYTHYvvP_hdKo")
-    print(df_rank)
+    # df_rank = lol_data.get_player_rank("gsWcPbFY8bcnEOcxjJL4wwkQV2n_HbdJQMRYTHYvvP_hdKo")
+    # print(df_rank)
+
+    lol_data.get_data_dragon_json(version='latest', data_type='profile_icon')
+
 

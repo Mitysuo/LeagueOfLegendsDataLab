@@ -7,6 +7,7 @@ from sqlalchemy import create_engine, text
 from sqlalchemy.engine.url import URL
 import pyodbc
 
+sys.path.append(os.path.abspath(os.path.join(__file__, "../../..")))
 from settings import queries_path, DRIVER, SERVER, DATABASE, USER_SQL, PASSWORD_SQL, TRUSTED_CONNECTION
 
 class SQLClient:
