@@ -48,13 +48,10 @@ class SQLClient:
         try:
             conn = self.engine
             if self.use_sqlalchemy:
-                # Usar SQLAlchemy
                 cursor = conn.raw_connection().cursor()
             else:
-                # Usar pyodbc
                 cursor = conn.cursor()
 
-            # Colocar nomes de colunas entre colchetes []
             columns = ', '.join([f'[{col}]' for col in df.columns])
             values_placeholders = ', '.join(['?'] * len(df.columns))
 
@@ -73,7 +70,7 @@ class SQLClient:
             cursor.close()
 
     
-    def get_data(self, table_name, columns):
+    def get_data(self, table_name: str, columns: str):
         """
         Retorna os dados de uma tabela SQL Server.
         """

@@ -1,12 +1,7 @@
-import os
 import json
-
-import pandas as pd
-from tqdm import tqdm
 
 from libs.riot_lib.riot import LeagueOfLegends
 from libs.extract_lib.stats import StatsFetcher
-from libs.sql_lib.sql import SQLClient
 from settings import docs_path
 
 def get_json_files():
@@ -37,45 +32,22 @@ def main():
     primary_rune_ids = []
     secundary_rune_ids = []
     for rune in runes:
-        primary_rune_ids.extend([r["id"] for r in rune["slots"][0]["runes"]])
-        secundary_rune_ids.extend([r["id"] for slot in rune["slots"][1:] for r in slot["runes"]])
-
-
-    win_rate_stats = {}
-    pick_rate_stats = {}
-    for championId in tqdm(champion_ids, desc="Processando campeões"):
+        primary_rune_ids.append(rune["id"])
+        secundary_rune_ids.append([rune["id"] for slot in rune["slots"] for rune in slot["runes"]])
+    
+    for championId in champion_ids:
         stats = StatsFetcher(championId)
-
-        win_rate_stats[championId] = {}
-        pick_rate_stats[championId] = {}
-
         for rune_id in primary_rune_ids:
             try:
-                win_rate, pick_rate = map(lambda value: float(value.replace('%', '')), stats.get_rune_stats(rune_id).values())
+                print(stats.get_rune_stats(rune_id))
             except Exception as e:
-                win_rate, pick_rate = -1.0, -1.0
-            finally:
-                win_rate_stats[championId][rune_id] = win_rate
-                pick_rate_stats[championId][rune_id] = pick_rate
-
+                print(e)
         for secundary_rune_id in secundary_rune_ids:
             try:
-                win_rate, pick_rate = map(lambda value: float(value.replace('%', '')), stats.get_secundary_rune_stats(secundary_rune_id).values())
+                print(stats.get_secundary_rune_stats(secundary_rune_id))
             except Exception as e:
-                win_rate, pick_rate = -1.0, -1.0
-            finally:
-                win_rate_stats[championId][secundary_rune_id] = win_rate
-                pick_rate_stats[championId][secundary_rune_id] = pick_rate
-    
-    df_rune_win_rate = pd.DataFrame.from_dict(win_rate_stats, orient='index')
-    df_rune_pick_rate = pd.DataFrame.from_dict(pick_rate_stats, orient='index')
-
-    df_rune_win_rate = df_rune_win_rate.reset_index().rename(columns={'index': 'championId'})
-    df_rune_pick_rate = df_rune_pick_rate.reset_index().rename(columns={'index': 'championId'})
-
-    sql = SQLClient(use_sqlalchemy=False)
-    sql.insert_dataframe(df_rune_win_rate, 'RuneWinRate', 'championId')
-    sql.insert_dataframe(df_rune_pick_rate, 'RunePickRate', 'championId')
+                print(e)
+        break
 
 if __name__ == "__main__":
     # get_json_files()
