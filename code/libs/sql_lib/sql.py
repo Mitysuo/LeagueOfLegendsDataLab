@@ -88,7 +88,7 @@ class SQLClient:
             cursor.close()
         return df
         
-    def create_table(self, df: pd.DataFrame, table_name: str, primary_key: str = None):
+    def create_table(self, df: pd.DataFrame, table_name: str, primary_key = None):
         """
         Cria uma tabela no SQL Server com base nas colunas e tipos de dados do DataFrame fornecido.
         Opcionalmente, define uma chave primária.
@@ -118,14 +118,16 @@ class SQLClient:
         columns_with_types_str = ', '.join(columns_with_types)
 
         if primary_key:
-            columns_with_types_str += f", PRIMARY KEY ([{primary_key}])"
+            if isinstance(primary_key, list):
+                primary_key_str = ', '.join([f"[{key}]" for key in primary_key])
+            else:
+                primary_key_str = f"[{primary_key}]"
+            columns_with_types_str += f", PRIMARY KEY ({primary_key_str})"
 
         # Construindo a consulta SQL para criar a tabela
         sql_file = os.path.join(queries_path, 'create_table.sql')
         with open(sql_file, 'r', encoding='utf-8') as file:
             sql_query = file.read()
-
-        sql_query = f"CREATE TABLE [{table_name}] ({columns_with_types_str});"
 
         try:
             # Conectando ao banco de dados e executando a consulta
@@ -135,6 +137,111 @@ class SQLClient:
                 conn.commit() 
         except Exception as e:
             print(f"Erro ao criar a tabela {table_name}: {e}")
+
+    def upsert_data(self, df: pd.DataFrame, table_name: str, match_columns: list):
+        """
+        Realiza um upsert (inserção ou atualização) em uma tabela SQL Server com base nos valores do DataFrame.
+
+        :param df: DataFrame com os dados a serem inseridos ou atualizados.
+        :param table_name: Nome da tabela onde os dados serão inseridos ou atualizados.
+        :param match_columns: Lista de colunas que serão usadas para verificar duplicidade (condição de match).
+        :param primary_key: Nome da coluna que serve como chave primária (opcional).
+        """
+        # Colunas avalidas
+        columns = ', '.join([f'? AS [{col}]' for col in df.columns])
+        
+        # Construindo a parte de match
+        match_condition = ' AND '.join([f"TARGET.[{col}] = SOURCE.[{col}]" for col in match_columns])
+
+        # Definindo as colunas de atualização e inserção
+        update_clause = ', '.join([f"TARGET.[{col}] = SOURCE.[{col}]" for col in df.columns])
+        insert_columns = ', '.join([f"[{col}]" for col in df.columns])
+        insert_values = ', '.join([f"SOURCE.[{col}]" for col in df.columns])
+
+        sql_file = os.path.join(queries_path, 'upsert_data.sql')
+        with open(sql_file, 'r', encoding='utf-8') as file:
+            sql_query = file.read()
+
+        try:
+            conn = self.engine
+            if self.use_sqlalchemy:
+                cursor = conn.raw_connection().cursor()
+            else:
+                cursor = conn.cursor()
+
+            for _, row in df.iterrows():
+                cursor.execute(sql_query.format(table_name, columns, match_condition, update_clause, insert_columns, insert_values), tuple(row))
+
+            conn.commit()
+            print(f"Upsert realizado com sucesso na tabela {table_name}")
+
+        except Exception as e:
+            print(f"Erro ao realizar upsert na tabela {table_name}: {e}")
+        finally:
+            cursor.close()
+
+    
+    def drop_table(self, table_name: str):
+        """
+        Exclui uma tabela do banco de dados SQL Server.
+
+        :param table_name: Nome da tabela a ser excluída.
+        """
+        sql_file = os.path.join(queries_path, 'drop_table.sql')
+        with open(sql_file, 'r', encoding='utf-8') as file:
+            sql_query = file.read()
+
+        try:
+            conn = self.engine
+            if self.use_sqlalchemy:
+                cursor = conn.raw_connection().cursor()
+            else:
+                cursor = conn.cursor()
+
+            cursor.execute(sql_query.format(table_name))
+            conn.commit()
+
+        except Exception as e:
+            print(f"Erro ao excluir a tabela {table_name}: {e}")
+        finally:
+            cursor.close()
+
+    def update_data(self, df: pd.DataFrame, table_name: str, match_columns: list):
+        """
+        Atualiza os dados de uma tabela SQL Server com base nos valores do DataFrame e colunas de match.
+        
+        :param df: DataFrame contendo os dados a serem atualizados.
+        :param table_name: Nome da tabela onde os dados serão atualizados.
+        :param match_columns: Lista de colunas usadas para verificar duplicidade (condição de match).
+        """
+        # Monta a query de atualização
+        update_clause = ', '.join([f"[{col}] = ?" for col in df.columns if col not in match_columns])
+        match_condition = ' AND '.join([f"[{col}] = ?" for col in match_columns])
+
+        sql_file = os.path.join(queries_path, 'update_data.sql')
+        with open(sql_file, 'r', encoding='utf-8') as file:
+            sql_query = file.read()
+
+        try:
+            conn = self.engine
+            if self.use_sqlalchemy:
+                cursor = conn.raw_connection().cursor()
+            else:
+                cursor = conn.cursor()
+
+            # Executa o update para cada linha do DataFrame
+            for _, row in df.iterrows():
+                update_values = [row[col] for col in df.columns if col not in match_columns]
+                match_values = [row[col] for col in match_columns]
+                cursor.execute(sql_query.format(table_name, update_clause, match_condition), tuple(update_values + match_values))
+
+            conn.commit()
+
+        except Exception as e:
+            print(f"Erro ao atualizar dados na tabela {table_name}: {e}")
+        finally:
+            cursor.close()
+
 
     
     def table_exists(self, table_name: str) -> bool:

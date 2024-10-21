@@ -26,7 +26,7 @@ DATABASE = os.getenv("DATABASE")
 
 # Nome das Tabelas
 match_table = os.getenv("MATCH")
-player_table = os.getenv("PLAYERS")
+player_table = os.getenv("PLAYER")
 team_table = os.getenv("TEAM")
 player_match_table = os.getenv("PLAYER_MATCH")
 

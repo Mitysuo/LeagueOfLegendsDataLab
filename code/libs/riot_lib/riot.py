@@ -4,6 +4,8 @@ from riotwatcher import LolWatcher, ApiError
 import requests
 import pandas as pd
 import json
+from tqdm import tqdm
+import time
 
 sys.path.append(os.path.abspath(os.path.join(__file__, "../..")))
 from sql_lib.sql import SQLClient
@@ -31,9 +33,7 @@ class LeagueOfLegends:
         puuids = []
         summonerIds_list = []
 
-        for i, summonerId in enumerate(summonerIds):
-            if i % 100 == 0:
-                print(f'Processing puuids: {i/len(summonerIds)*100:.2f}%')
+        for summonerId in tqdm(summonerIds, desc="Obtendo PUUIDs"):
             try:
                 summoner = self.watcher.summoner.by_id(self.region, summonerId)
                 puuids.append(summoner['puuid'])
@@ -57,6 +57,7 @@ class LeagueOfLegends:
         # Recuperar dados para o tier Challenger
         challenger_league = self.watcher.league.challenger_by_queue(self.region, self.queue)
         chall_df = pd.DataFrame(challenger_league['entries']).sort_values('leaguePoints', ascending=False).reset_index(drop=True)
+        chall_df['tier'] = 'CHALLENGER'
 
         gm_df, m_df = pd.DataFrame(), pd.DataFrame()
 
@@ -64,18 +65,19 @@ class LeagueOfLegends:
         if top > len(chall_df):
             grandmaster_league = self.watcher.league.grandmaster_by_queue(self.region, self.queue)
             gm_df = pd.DataFrame(grandmaster_league['entries']).sort_values('leaguePoints', ascending=False).reset_index(drop=True)
+            gm_df['tier'] = 'GRANDMASTER'
 
         # Recuperar dados para o tier Master se top > 1000
         if top > len(gm_df):
             master_league = self.watcher.league.masters_by_queue(self.region, self.queue)
             m_df = pd.DataFrame(master_league['entries']).sort_values('leaguePoints', ascending=False).reset_index(drop=True)
+            m_df['tier'] = 'MASTER'
 
         # Concatenar os DataFrames e selecionar os X melhores jogadores
         df = pd.concat([chall_df, gm_df, m_df]).reset_index(drop=True)[:top]
 
         # Incluir riot_id e riot_tag se especificado
         if include_tag:
-            print('Obtendo PUUIDs . . .')
             puuid_df = self.get_puuid(df)
             df = df.merge(puuid_df, on='summonerId', how='outer')
 
@@ -115,11 +117,16 @@ class LeagueOfLegends:
         """
         Obtém dados de uma partida específica.
         """
-
+        index_error = 0
         try:
             match_json = self.watcher.match.by_id(self.region, match_id)
-        except ApiError as e:
-            print(f"Erro ao obter dados de partidas: {e}")
+        except Exception as _:
+            time.sleep(20)
+            index_error += 1
+
+            if index_error >= 2:
+                return False, False, False
+            return self.get_match(match_id)  # Tenta novamente
 
         metadata = match_json['metadata']
         info = match_json['info']
@@ -202,11 +209,6 @@ class LeagueOfLegends:
             
         ### Player information
         player_list = []
-        championId = player['championId']
-
-        # Runes
-        primaryRune = [perks['styles'][0]['selections'][i]['perk'] for i in range(4)]
-        secudaryRune = [perks['styles'][1]['selections'][i]['perk'] for i in range(2)]
 
         for index, participant in enumerate(participants):
             player = info['participants'][index]
@@ -214,9 +216,13 @@ class LeagueOfLegends:
             challenges = player['challenges']
             summonerId = player["summonerId"]
 
+            # Runes
+            primaryRune = [perks['styles'][0]['selections'][i]['perk'] for i in range(4)]
+            secudaryRune = [perks['styles'][1]['selections'][i]['perk'] for i in range(2)]
+
             # Extra Information
             rank = self.get_player_rank(summonerId)
-            tierRank = rank['tier'] + ' ' + rank['rank'] if rank is not None else "Missing"
+            tierRank = rank['tier'][0] + ' ' + rank['rank'][0] if rank is not None else "Missing"
 
             if index < 5:
                 teamId = teams[0]["teamId"]
@@ -242,7 +248,7 @@ class LeagueOfLegends:
 
                 # Champion information
                 "champion" : player['championName'],
-                "championId" : championId,
+                "championId" : player['championId'],
                 "champLevel" : player['champLevel'],
                 "champExperience" : player["champExperience"],
 
@@ -348,11 +354,7 @@ class LeagueOfLegends:
 
         return df_match, df_team, df_player
     
-    def get_mastery_champion(self, puuid):
-        # # Consultar SQL se existe a maestria do campeão para um certo puuid
-        # sql_alchemy = SQLClient()
-        # sql_alchemy.get_data('ChampionMastery', 'championPoints, averageGrade')
-        
+    def get_mastery_champion(self, puuid):       
         try:
             mastery_champions = self.watcher.champion_mastery.by_puuid(self.region, puuid)
             
@@ -383,7 +385,7 @@ class LeagueOfLegends:
                     "championId" : champion["championId"],
                     "championLevel" : champion["championLevel"],
                     "championPoints" : champion["championPoints"],
-                    "lastPlayTime" : champion["lastPlayTime"],
+                    "lastPlayTime" : champion["lastPlayTime"]/1000,
                     "averageGrade" : grades
                 }
 
@@ -434,13 +436,8 @@ class LeagueOfLegends:
             df_rank = pd.DataFrame([rank_dict])
             
             return df_rank
-        except ApiError as err:
-            if err.response.status_code == 429:
-                print("Limite de requisições atingido. Tente novamente mais tarde.")
-            elif err.response.status_code == 404:
-                print(f"SummonerId não encontrado.")
-            else:
-                print(f"Ocorreu um erro: {err}")
+        except Exception as e:
+            print(e)
         
     def get_data_dragon_json(self, version='latest', data_type='champion'):
         """
@@ -490,9 +487,12 @@ class LeagueOfLegends:
         
 if __name__ == "__main__":
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
-    lol_data = LeagueOfLegends()
+    lol_data = LeagueOfLegends(queue='420') # RANKED_SOLO_5x5 or 420
     # df = lol_data.get_league(2000)
-    # print(df)
+
+    match_ids = lol_data.get_matchlist('yibS_oarcTPUlOdhwnSVnah_BiIvGRZP4_fpi_HiJ0Sny1yDnCGzWPyQKariiPj3QVOye8HEOENyZA', count=3)
+    print(type(match_ids))
+
 
     # df_mastery = lol_data.get_mastery_champion('45vQt28hMXEfGOBx3eqywuUXTBb1UzFMbqsEmpkaUn_I93kcU9KAple9kGlC3Fni7RO0RG_NBRiq5Q')
     # print(df_mastery['averageGrade'])
@@ -501,6 +501,4 @@ if __name__ == "__main__":
     # df_rank = lol_data.get_player_rank("gsWcPbFY8bcnEOcxjJL4wwkQV2n_HbdJQMRYTHYvvP_hdKo")
     # print(df_rank)
 
-    lol_data.get_data_dragon_json(version='latest', data_type='profile_icon')
-
-
+    # lol_data.get_data_dragon_json(version='latest', data_type='profile_icon')
