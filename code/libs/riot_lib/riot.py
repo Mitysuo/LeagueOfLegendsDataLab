@@ -36,10 +36,11 @@ class LeagueOfLegends:
         for summonerId in tqdm(summonerIds, desc="Obtendo PUUIDs"):
             try:
                 summoner = self.watcher.summoner.by_id(self.region, summonerId)
+            except Exception as e:
+                print(f"Erro ao obter PUUID para summonerId {summonerId}: {e}")
+            else:
                 puuids.append(summoner['puuid'])
                 summonerIds_list.append(summonerId)
-            except ApiError as err:
-                print(f"Erro ao obter PUUID para summonerId {summonerId}: {err}")
 
         return pd.DataFrame({'summonerId': summonerIds_list, 'puuid': puuids})
 
@@ -79,7 +80,7 @@ class LeagueOfLegends:
         # Incluir riot_id e riot_tag se especificado
         if include_tag:
             puuid_df = self.get_puuid(df)
-            df = df.merge(puuid_df, on='summonerId', how='outer')
+            df = df.merge(puuid_df, on='summonerId', how='inner')
 
             # Reordenar colunas
             cols = ['puuid', 'summonerId', 'leaguePoints', 'tier', 'wins', 'losses', 'veteran', 'inactive', 'freshBlood', 'hotStreak']

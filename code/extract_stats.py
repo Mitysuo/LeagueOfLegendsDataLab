@@ -44,6 +44,11 @@ def get_rune_stats():
     pick_rate_stats = {}
     for championId in tqdm(champion_ids, desc="Processando campeões"):
         stats = StatsFetcher(championId)
+
+        # Inicializa os dicionários para o championId
+        win_rate_stats[championId] = {}
+        pick_rate_stats[championId] = {}
+
         for rune_id in primary_rune_ids:
             try:
                 win_rate, pick_rate = map(lambda value: float(value.replace('%', '')), stats.get_rune_stats(rune_id).values())
@@ -105,7 +110,7 @@ def get_champion_stats():
     sql.insert_dataframe(df_champion_stats, 'ChampionStats', ['championId', 'lane'])
 
 if __name__ == "__main__":
-    # get_json_files()
+    get_json_files()
     
     # Excluir tabelas se existirem
     sql = SQLClient(use_sqlalchemy=False)

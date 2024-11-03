@@ -36,7 +36,7 @@ class LolTheoryScraper:
 
             champions = champion_names
 
-        if len(champion_names) < 10:
+        if len(champions) < 10:
             return {
             "Risk Value:": '-1.0',
             "Win Rate:": '-1.0'
