@@ -37,7 +37,7 @@ Ao final do processo de extração, teremos três tabelas principais:
 
 ## Extração dos Dados
 
-Com o arquivo .env configurado, o processo de extração de dados envolve três etapas. 
+Com o arquivo .env configurado, o processo de extração de dados envolve três etapas.
 
 - **Coleta dos dados**: Primeiro, o sistema coleta uma certa quantidade de jogadores mais bem colocados no ranking (definidos pela variável AMOUNT), depois as informações da partida que cada jogador realizou durante o patch definido pela variável GAME_VERSION e, por fim, dados de maestria dos campeões de cada jogador. Esses dados são armazenados nas tabelas PLAYER, MATCH, TEAMS, PLAYER_MATCH e em uma tabela específica chamada PlayerChampionMastery. Para iniciar o processo, execute:
 
