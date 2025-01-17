@@ -1,4 +1,5 @@
 import os
+
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -12,9 +13,9 @@ logs_path = os.getenv("LOGS_PATH")
 API_KEY = os.getenv("API_KEY")
 
 # Parâmetros LOL
-GAME_VERSION="14.20"
-REGION="BR1"
-QUEUE="Ranked" # Não há outras opções
+GAME_VERSION = "14.20"
+REGION = "BR1"
+QUEUE = "Ranked"  # Não há outras opções
 
 # Configuração SQL
 TRUSTED_CONNECTION = os.getenv("TRUSTED_CONNECTION")

@@ -1,0 +1,67 @@
+[tool.poetry]
+name = "LeagueOfLegendsDataLab"
+version = "0.1.0"
+description = ""
+authors = ["Vinícius <viniciusfurukava@gmail.com>"]
+readme = "README.md"
+package-mode = false
+
+[tool.poetry.dependencies]
+python = "^3.11"
+python-dotenv = "1.0.1"
+alembic = "1.13.3"
+
+[tool.poetry.group.test.dependencies]
+pytest = "8.2.2"
+isort = "5.13.2"
+black = "24.3.0"
+flake8 = "7.0.0"
+pre-commit = "3.8.0"
+
+[tool.pytest.ini_options]
+log_cli = true
+log_cli_level = "DEBUG"
+log_cli_format = "%(asctime)s [%(levelname)8s] %(message)s (%(filename)s:%(lineno)s)"
+log_cli_date_format = "%Y-%m-%d %H:%M:%S"
+testpaths = ["tests"]
+addopts = "-raPsfE"
+
+[tool.flake8]
+select = ['B', 'C', 'E', 'F', 'W', 'T4', 'B9']
+ignore = ['E202','E203', 'E266', 'E501', 'W503', 'F403', 'F401', 'E712', 'E226', 'E722', 'W605', 'F405', 'E721', 'E704']
+max-line-length = 88
+max-complexity = 37
+
+[tool.isort]
+profile = "black"
+
+[tool.black]
+line-length = 88
+include = '\.pyi?$'
+exclude = '''
+/(
+    \.git
+  | \.hg
+  | \.mypy_cache
+  | \.tox
+  | \.venv
+  | _build
+  | buck-out
+  | build
+  | dist
+)/
+'''
+
+[[tool.poetry.source]]
+name = "devartefatos"
+url = "https://pip-user:pipuser123@devartefatos.quantumaxis.com.br/repository/pip-quantum/simple"
+priority = "primary"
+
+[[tool.poetry.source]]
+name = "artefatospublicados"
+url = "https://pip-user:pipuser123@devartefatos.quantumaxis.com.br/repository/python-quantum/"
+priority = "supplemental"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

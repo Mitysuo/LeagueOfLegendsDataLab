@@ -1,15 +1,16 @@
-import sys
-import os
 import json
+import os
+import sys
+
 from playwright.sync_api import sync_playwright
 
-sys.path.append(os.path.abspath(os.path.join(__file__, "../../..")))
 from settings import docs_path
+
 
 class LolTheoryScraper:
     def __init__(self):
         self.url = "https://loltheory.gg/lol/team-comp-analyzer/solo-queue?user-role=middle&rank-range=diamond_plus&recommendation-method=classic"
-    
+
     def __start_browser(self):
         self.playwright = sync_playwright().start()
         # Alterar para headless=False para exibir o navegador
@@ -26,7 +27,9 @@ class LolTheoryScraper:
 
         # Obter os nomes dos campeões
         if Id:
-            with open(os.path.join(docs_path, 'champion.json'), 'r', encoding='utf-8') as file:
+            with open(
+                os.path.join(docs_path, "champion.json"), "r", encoding="utf-8"
+            ) as file:
                 champions_json = json.load(file)
             champion_names = []
             for champion_id in champions:
@@ -37,14 +40,11 @@ class LolTheoryScraper:
             champions = champion_names
 
         if len(champions) < 10:
-            return {
-            "Risk Value:": '-1.0',
-            "Win Rate:": '-1.0'
-        }
+            return {"Risk Value:": "-1.0", "Win Rate:": "-1.0"}
 
         try:
             # Encontra todos os SVGs que representam os slots de campeões
-            svg_elements = self.page.query_selector_all('svg.add-champ.add-fav-icon')
+            svg_elements = self.page.query_selector_all("svg.add-champ.add-fav-icon")
 
             # Itera sobre cada SVG e seleciona um campeão da lista
             for i, svg_element in enumerate(svg_elements):
@@ -59,28 +59,39 @@ class LolTheoryScraper:
                 self.page.click(f'span.name:text("{champions[i]}")')
 
             # Obtém as informações desejadas
-            risk_value = self.page.text_content('span.risk.font-weight-600.font-number')
-            win_rate_value = self.page.text_content('span.champion-column.win-rate.font-number')
+            risk_value = self.page.text_content("span.risk.font-weight-600.font-number")
+            win_rate_value = self.page.text_content(
+                "span.champion-column.win-rate.font-number"
+            )
 
             self.__close_browser()
 
             return {
                 "Risk Value:": risk_value.strip(),
-                "Win Rate:": win_rate_value.strip()
+                "Win Rate:": win_rate_value.strip(),
             }
-        except Exception as e:
-            return {
-                "Risk Value:": '-1.0',
-                "Win Rate:": '-1.0'
-            }
+        except:
+            return {"Risk Value:": "-1.0", "Win Rate:": "-1.0"}
+
 
 # Uso da classe:
 if __name__ == "__main__":
     # Lista de campeões para serem selecionados
-    champions_to_select = ["Aatrox", "Amumu", "Elise", "Ashe", "Blitzcrank", "Caitlyn", "Darius", "Draven", "Ekko", "Alistar"]
-    
+    champions_to_select = [
+        "Aatrox",
+        "Amumu",
+        "Elise",
+        "Ashe",
+        "Blitzcrank",
+        "Caitlyn",
+        "Darius",
+        "Draven",
+        "Ekko",
+        "Alistar",
+    ]
+
     scraper = LolTheoryScraper()
     risk_value, win_rate = scraper.get_stats(champions_to_select, Id=False).values()
 
-    print(f'Risk Value: {risk_value}')
-    print(f'Win Rate: {win_rate}')
+    print(f"Risk Value: {risk_value}")
+    print(f"Win Rate: {win_rate}")
