@@ -184,11 +184,13 @@ class LeagueOfLegends:
         for index in range(5):
             if info["participants"][index]["firstTowerKill"]:
                 firstTower = [True, False]
+                break
             elif index == 4:
                 firstTower = [False, True]
 
             if info["participants"][index]["firstBloodKill"]:
                 firstKill = [True, False]
+                break
             elif index == 4:
                 firstKill = [False, True]
 
