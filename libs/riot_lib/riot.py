@@ -1,12 +1,9 @@
 import json
 import os
-import sys
 import time
 
 import pandas as pd
-import requests
 from riotwatcher import ApiError, LolWatcher
-from sql_lib.sql import SQLClient
 from tqdm import tqdm
 
 from settings import API_KEY, docs_path
@@ -188,6 +185,7 @@ class LeagueOfLegends:
             elif index == 4:
                 firstTower = [False, True]
 
+        for index in range(5):
             if info["participants"][index]["firstBloodKill"]:
                 firstKill = [True, False]
                 break
@@ -504,13 +502,15 @@ class LeagueOfLegends:
         except Exception as e:
             print(e)
 
-    def get_data_dragon_json(self, version="latest", data_type="champion"):
+    def get_data_dragon_json(
+        self, version: str = "latest", data_type: str = "champion"
+    ):
         """
         Obtém os arquivos JSON do Data Dragon da Riot Games usando o RiotWatcher e os salva na pasta especificada em docs_path.
 
-        :param version: Versão do Data Dragon a ser baixada (ex.: '13.19.1'). Use 'latest' para a versão mais recente.
-        :param data_type: Tipo de dados a serem baixados (ex.: 'champion', 'item', 'rune').
-        :return: Caminho completo do arquivo JSON salvo.
+        Args:
+            version (str): Versão do Data Dragon a ser baixada (ex.: '13.19.1'). Use 'latest' para a versão mais recente.
+            data_type (str): Tipo de dados a serem baixados (ex.: 'champion', 'item', 'rune').
         """
         # Se a versão for 'latest', busca a versão mais recente diretamente da API do Data Dragon
         if version == "latest":

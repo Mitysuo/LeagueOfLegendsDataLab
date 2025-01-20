@@ -1,42 +1,52 @@
+import datetime
 import logging
+import logging.handlers
 import os
-from datetime import datetime
+
+from settings import logs_path
 
 
-class Logger:
-    def __init__(self, log_directory="log"):
-        # Define o diretório para os logs
-        self.log_directory = log_directory
-        # Cria o diretório se não existir
-        os.makedirs(self.log_directory, exist_ok=True)
+class LoggerMeta(type):
+    _instances = {}
 
-        # Define o nome do arquivo de log como a data atual
-        log_file = datetime.now().strftime("%Y-%m-%d") + ".log"
-        log_path = os.path.join(self.log_directory, log_file)
+    def __call__(cls, *args, **kwargs):
+        if cls not in cls._instances:
+            cls._instances[cls] = super().__call__(*args, **kwargs)
+        return cls._instances[cls]
 
-        # Configura o logger
-        logging.basicConfig(
-            filename=log_path,
-            level=logging.DEBUG,
-            format="%(asctime)s - %(levelname)s - %(message)s",
+
+class Logger(metaclass=LoggerMeta):
+
+    def __calculateExecutionNumber(self):
+        return len(os.listdir(logs_path))
+
+    def __init__(self):
+        self.__filename = os.path.join(
+            logs_path,
+            f"{datetime.date.today().isoformat()}_campos_tmc_{self.__calculateExecutionNumber()}.log",
         )
 
-    def log(self, message, level="info"):
-        # Mapeia o nível de log para a função correspondente
-        level = level.lower()
-        match level:
-            case "info":
-                logging.info(message)
-            case "error":
-                logging.error(message)
-            case "warning":
-                logging.warning(message)
-            case _:
-                logging.info(f"Invalid log level: {level}. Logging as info: {message}")
+    def getLogger(self, log_name: str = "LoggerId"):
+        # Gets the log with the LoggerId
+        logger = logging.getLogger(log_name)
 
+        # Create a new logger handler if one is not already created
+        if len(logger.handlers) == 0:
+            # Prepare the file name based on the date
+            fh = logging.handlers.RotatingFileHandler(self.__filename, encoding="utf-8")
+            console_handler = logging.StreamHandler()
 
-if __name__ == "__main__":
-    logger = Logger()
-    logger.log("Este é um log de informação.", level="info")
-    logger.log("Este é um aviso.", level="warning")
-    logger.log("Este é um erro.", level="error")
+            # Set the logger level to DEBUG
+            logger.setLevel(logging.DEBUG)
+
+            # Prepares the format of the message
+            formatter = logging.Formatter(
+                "%(asctime)s  [%(funcName)s] %(levelname)s: %(message)s"
+            )
+            fh.setFormatter(formatter)
+            console_handler.setFormatter(formatter)
+
+            # Add the handler to the logger
+            logger.addHandler(fh)
+            logger.addHandler(console_handler)
+        return logger

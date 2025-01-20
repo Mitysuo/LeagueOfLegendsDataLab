@@ -1,7 +1,10 @@
 import json
+import os
 
 import requests
 from bs4 import BeautifulSoup
+
+from settings import docs_path
 
 
 class StatsFetcher:
@@ -11,7 +14,9 @@ class StatsFetcher:
         self.champion_name = self.__get_champion_name()
 
     def __get_champion_name(self):
-        with open("code/docs/champion.json", "r", encoding="utf-8") as file:
+        with open(
+            os.path.join(docs_path, "champion.json"), "r", encoding="utf-8"
+        ) as file:
             data = json.load(file)
 
         for _, details in data["data"].items():

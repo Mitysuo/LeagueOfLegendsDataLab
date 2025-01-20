@@ -26,10 +26,14 @@ SERVER = os.getenv("SERVER")
 DATABASE = os.getenv("DATABASE")
 
 # Nome das Tabelas
-match_table = os.getenv("MATCH")
-player_table = os.getenv("PLAYER")
-team_table = os.getenv("TEAM")
-player_match_table = os.getenv("PLAYER_MATCH")
+match_table = os.getenv("MATCH_TABLE")
+player_table = os.getenv("PLAYER_TABLE")
+team_table = os.getenv("TEAM_TABLE")
+player_match_table = os.getenv("PLAYER_MATCH_TABLE")
+rune_win_table = os.getenv("RUNE_WIN_TABLE")
+rune_pick_table = os.getenv("RUNE_PICK_TABLE")
+champion_stats_table = os.getenv("CHAMPION_STATS_TABLE")
+champion_mastery_table = os.getenv("CHAMPION_MASTERY_TABLE")
 
 # Quantidade de dados a serem extraídos
 AMOUNT = os.getenv("AMOUNT")

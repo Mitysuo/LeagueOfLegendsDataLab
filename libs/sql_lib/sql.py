@@ -1,5 +1,4 @@
 import os
-import sys
 
 import pandas as pd
 import pyodbc
@@ -57,6 +56,11 @@ class SQLClient:
         """
         Insere os dados de um DataFrame em uma tabela SQL Server.
         Se a tabela não existir, cria a tabela e tenta a inserção novamente.
+
+        Args:
+            df (pd.Dataframe): DataFrame cujas colunas e tipos de dados serão usados para inserir na tabela.
+            table_name (str): Nome da tabela a ter os dados inseridos.
+            primary_key (str): Nome da coluna definida como chave primária (opcional).
         """
 
         if not self.table_exists(table_name):
@@ -92,6 +96,13 @@ class SQLClient:
     def get_data(self, table_name: str, columns: str):
         """
         Retorna os dados de uma tabela SQL Server.
+
+        Args:
+            table_name (str): Nome da tabela a ser obtida.
+            columns (str): Nome das colunas a serem obtidas.
+
+        Return
+            pd.Dataframe: Dataframe da tabela e colunas informadas.
         """
         sql_file = os.path.join(queries_path, "get_data.sql")
         with open(sql_file, "r", encoding="utf-8") as file:
@@ -109,14 +120,15 @@ class SQLClient:
             cursor.close()
         return df
 
-    def create_table(self, df: pd.DataFrame, table_name: str, primary_key=None):
+    def create_table(self, df: pd.DataFrame, table_name: str, primary_key: str = None):
         """
         Cria uma tabela no SQL Server com base nas colunas e tipos de dados do DataFrame fornecido.
         Opcionalmente, define uma chave primária.
 
-        :param table_name: Nome da tabela a ser criada no banco de dados.
-        :param df: DataFrame cujas colunas e tipos de dados serão usados para criar a tabela.
-        :param primary_key: Nome da coluna a ser definida como chave primária (opcional).
+        Args:
+            df (pd.Dataframe): DataFrame cujas colunas e tipos de dados serão usados para criar a tabela.
+            table_name (str): Nome da tabela a ser criada no banco de dados.
+            primary_key (str): Nome da coluna a ser definida como chave primária (opcional).
         """
 
         if self.use_sqlalchemy:
@@ -159,67 +171,12 @@ class SQLClient:
         except Exception as e:
             print(f"Erro ao criar a tabela {table_name}: {e}")
 
-    def upsert_data(self, df: pd.DataFrame, table_name: str, match_columns: list):
-        """
-        Realiza um upsert (inserção ou atualização) em uma tabela SQL Server com base nos valores do DataFrame.
-
-        :param df: DataFrame com os dados a serem inseridos ou atualizados.
-        :param table_name: Nome da tabela onde os dados serão inseridos ou atualizados.
-        :param match_columns: Lista de colunas que serão usadas para verificar duplicidade (condição de match).
-        :param primary_key: Nome da coluna que serve como chave primária (opcional).
-        """
-        # Colunas avalidas
-        columns = ", ".join([f"? AS [{col}]" for col in df.columns])
-
-        # Construindo a parte de match
-        match_condition = " AND ".join(
-            [f"TARGET.[{col}] = SOURCE.[{col}]" for col in match_columns]
-        )
-
-        # Definindo as colunas de atualização e inserção
-        update_clause = ", ".join(
-            [f"TARGET.[{col}] = SOURCE.[{col}]" for col in df.columns]
-        )
-        insert_columns = ", ".join([f"[{col}]" for col in df.columns])
-        insert_values = ", ".join([f"SOURCE.[{col}]" for col in df.columns])
-
-        sql_file = os.path.join(queries_path, "upsert_data.sql")
-        with open(sql_file, "r", encoding="utf-8") as file:
-            sql_query = file.read()
-
-        try:
-            conn = self.engine
-            if self.use_sqlalchemy:
-                cursor = conn.raw_connection().cursor()
-            else:
-                cursor = conn.cursor()
-
-            for _, row in df.iterrows():
-                cursor.execute(
-                    sql_query.format(
-                        table_name,
-                        columns,
-                        match_condition,
-                        update_clause,
-                        insert_columns,
-                        insert_values,
-                    ),
-                    tuple(row),
-                )
-
-            conn.commit()
-            print(f"Upsert realizado com sucesso na tabela {table_name}")
-
-        except Exception as e:
-            print(f"Erro ao realizar upsert na tabela {table_name}: {e}")
-        finally:
-            cursor.close()
-
     def drop_table(self, table_name: str):
         """
         Exclui uma tabela do banco de dados SQL Server.
 
-        :param table_name: Nome da tabela a ser excluída.
+        Args:
+            table_name (str): Nome da tabela a ser excluída.
         """
         sql_file = os.path.join(queries_path, "drop_table.sql")
         with open(sql_file, "r", encoding="utf-8") as file:
@@ -244,9 +201,10 @@ class SQLClient:
         """
         Atualiza os dados de uma tabela SQL Server com base nos valores do DataFrame e colunas de match.
 
-        :param df: DataFrame contendo os dados a serem atualizados.
-        :param table_name: Nome da tabela onde os dados serão atualizados.
-        :param match_columns: Lista de colunas usadas para verificar duplicidade (condição de match).
+        Args:
+            df (pd.Dataframe): DataFrame contendo os dados a serem atualizados.
+            table_name (str): Nome da tabela onde os dados serão atualizados.
+            match_columns (list): Lista de colunas usadas para verificar duplicidade (condição de match).
         """
         # Monta a query de atualização
         update_clause = ", ".join(
@@ -287,8 +245,11 @@ class SQLClient:
         """
         Verifica se uma tabela existe no banco de dados.
 
-        :param table_name: Nome da tabela a ser verificada.
-        :return: True se a tabela existir, False caso contrário.
+        Args:
+            table_name (str): Nome da tabela a ser verificada.
+
+        Return:
+            True se a tabela existir, False caso contrário.
         """
 
         sql_file = os.path.join(queries_path, "table_information.sql")
