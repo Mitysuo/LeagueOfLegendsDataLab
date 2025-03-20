@@ -140,6 +140,42 @@ class LeagueDataProcessing:
         teams_data = self.sql.get_data(team_table, "*")
         players_matches_data = self.sql.get_data(player_match_table, "*")
 
+        tier_rank_map = {
+            "EMERALD IV": 1, "EMERALD III": 2, "EMERALD II": 3, "EMERALD I": 4,
+            "DIAMOND IV": 5, "DIAMOND III": 6, "DIAMOND II": 7, "DIAMOND I": 8,
+            "MASTER I": 9, "GRANDMASTER I": 10, "CHALLENGER I": 11, "Missing": np.nan
+        }
+
+        # Adicionar o tierRank numérico aos dados dos jogadores
+        players_matches_data["tierRankNumeric"] = players_matches_data["tierRank"].map(tier_rank_map)
+
+        # Substitui os missing values
+        missing_values = players_matches_data[players_matches_data["tierRankNumeric"].isna()]
+
+        for i, row in missing_values.iterrows():
+            match_id = row["matchId"]
+            team_id = row["teamId"]
+
+            if team_id == 100:
+                enemy_team_id = 200
+            else:
+                enemy_team_id = 100
+
+            team_tier = players_matches_data.loc[
+                (players_matches_data["matchId"] == match_id) &
+                (players_matches_data["teamId"] == team_id), "tierRankNumeric"
+            ]
+
+            team_avg_enemy_tier = players_matches_data.loc[
+                (players_matches_data["matchId"] == match_id) &
+                (players_matches_data["teamId"] == enemy_team_id), "tierRankNumeric"
+            ].mean()
+
+            value = round((team_tier.count()+1)*team_avg_enemy_tier - team_tier.sum())
+            value = max(1, min(11, value))
+
+            players_matches_data.loc[row.name, "tierRankNumeric"] = value
+
         # Selecionar informações do lado azul
         blue_side_teams_data = teams_data[teams_data["teamId"] == 100][
             ["matchId", "win"]
@@ -172,6 +208,7 @@ class LeagueDataProcessing:
                 avg_rune_pick_rate=("runePickRate", "mean"),
                 avg_vision_score=("visionScore", "mean"),
                 avg_longest_time_spent_living=("longestTimeSpentLiving", "mean"),
+                avg_tier_rank=("tierRankNumeric", "mean"),
                 # Soma
                 total_kills=("kills", "sum"),
                 total_deaths=("deaths", "sum"),
@@ -220,6 +257,7 @@ class LeagueDataProcessing:
                 "avg_rune_pick_rate",
                 "avg_vision_score",
                 "avg_longest_time_spent_living",
+                "avg_tier_rank",
                 "total_kills",
                 "total_deaths",
                 "total_assists",
